@@ -4,6 +4,14 @@ const db = require("./config/db");
 const moment = require("moment-timezone");
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const channelId = "@Subyektiv_1";
+const express = require("express");
+
+const app = express();
+
+
+app.get("/test", (req,res)=>{
+  res.send("Server still active!");
+})
 
 // Improved Rasch model ability estimation
 function estimateAbility(answers, correctAnswers, difficulties) {
