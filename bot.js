@@ -252,7 +252,7 @@ bot.on("text", async (ctx) => {
 <b>Qo'llanma:</b>
 📤 Javoblarni ushbu botga quyidagi formatda yuboring:
 
-<b>/answers 1*1a2b3c...</b>
+<b>/answer 1*1a2b3c...</b>
 
 <b>Izoh:</b>
 * Yulduzcha oldidagi raqam — mock test raqami
