@@ -3,7 +3,7 @@ const { Telegraf, Markup } = require("telegraf");
 const db = require("./config/db");
 const moment = require("moment-timezone");
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const channelId = "@MTest_public";
+const channelId = "@Subyektiv_1";
 
 // Improved Rasch model ability estimation
 function estimateAbility(answers, correctAnswers, difficulties) {
@@ -252,7 +252,7 @@ bot.on("text", async (ctx) => {
 <b>Qo'llanma:</b>
 📤 Javoblarni ushbu botga quyidagi formatda yuboring:
 
-<b>1*1a2b3c...</b>
+<b>/answers 1*1a2b3c...</b>
 
 <b>Izoh:</b>
 * Yulduzcha oldidagi raqam — mock test raqami
