@@ -166,7 +166,7 @@ bot.command("answer", async (ctx) => {
 
     const newResult = {
       userId,
-      username: ctx.message.from.username || "unknown",
+      username: ctx.message.from.username || "",
       firstName: ctx.message.from.first_name || "",
       lastName: ctx.message.from.last_name || "",
       result: score,
