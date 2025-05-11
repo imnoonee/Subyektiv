@@ -90,7 +90,7 @@ bot.command("answer", async (ctx) => {
     const answerMatches = answersPart.match(/\d+[a-dA-D]/g) || [];
     if (answerMatches.length !== 10) {
       return ctx.reply(
-        `❌ Javoblar aniq 35 ta bo'lishi kerak! Siz yuborgan: ${answerMatches.length} ta.`
+        `❌ Javoblar aniq 10 ta bo'lishi kerak! Siz yuborgan: ${answerMatches.length} ta.`
       );
     }
 
@@ -188,10 +188,7 @@ bot.command("answer", async (ctx) => {
     // Save to database
     if (resultCheck.rows.length > 0) {
       const existingResults = resultCheck.rows[0].results || [];
-      await db.query("UPDATE results SET results = $1 WHERE mock_number = $2", [
-        JSON.stringify([...existingResults, newResult]),
-        mockId,
-      ]);
+     
     } else {
       await db.query(
         "INSERT INTO results (mock_number, results) VALUES ($1, $2)",
