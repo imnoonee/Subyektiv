@@ -95,14 +95,14 @@ bot.command("answer", async (ctx) => {
     const parts = message.split(/\s+/);
 
     if (parts.length < 2) {
-      return ctx.reply("❌ Javobni jo'natmadingiz! Format: /answer 1*1a2b3c...");
+      return ctx.reply("❌ Javobni jo'natmadingiz! Format: /answer 5*1a2b3c...");
     }
 
     const input = parts[1];
     const [mockPart, answersPart] = input.split("*");
 
     if (!mockPart || !answersPart) {
-      return ctx.reply("❌ Format noto'g'ri! To'g'ri format: /answer 1*1a2b3c...");
+      return ctx.reply("❌ Format noto'g'ri! To'g'ri format: /answer 5*1a2b3c...");
     }
 
     const mockId = parseInt(mockPart);
@@ -203,7 +203,7 @@ bot.on("text", async (ctx) => {
 
 <b>Qo'llanma:</b>
 📤 Javoblarni quyidagi formatda yuboring:
-<b>/answer 1*1a2b3c...</b>
+<b>/answer 5*1a2b3c...</b>
 
 <i><b>Omad!</b></i>`,
       { parse_mode: "HTML" }
