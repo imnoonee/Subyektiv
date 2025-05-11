@@ -2,20 +2,20 @@ require("dotenv").config();
 const { Telegraf, Markup } = require("telegraf");
 const db = require("./config/db");
 const moment = require("moment-timezone");
-const bot = new Telegraf(process.env.BOT_TOKEN);
-const channelId = "@Subyektiv_1";
 const express = require("express");
 
+const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
+const channelId = "@Subyektiv_1";
 
-
-app.get("/test", (req,res)=>{
+// Express test route
+app.get("/test", (req, res) => {
   res.send("Server still active!");
-})
+});
 
-// Improved Rasch model ability estimation
+// Rasch model ability estimation
 function estimateAbility(answers, correctAnswers, difficulties) {
-  let theta = 0.0; // Initial ability estimate
+  let theta = 0.0;
   const maxIterations = 50;
   const tolerance = 0.0001;
   const minChange = 0.0001;
@@ -25,7 +25,7 @@ function estimateAbility(answers, correctAnswers, difficulties) {
     let secondDerivative = 0.0;
 
     for (let i = 0; i < answers.length; i++) {
-      const diff = difficulties[i] || 0; // Default difficulty if not provided
+      const diff = difficulties[i] || 0;
       const response = answers[i] === correctAnswers[i] ? 1 : 0;
       const probability = 1.0 / (1.0 + Math.exp(-(theta - diff)));
 
@@ -33,7 +33,6 @@ function estimateAbility(answers, correctAnswers, difficulties) {
       secondDerivative += probability * (1.0 - probability);
     }
 
-    // Avoid division by zero
     if (Math.abs(secondDerivative) < 0.01) {
       secondDerivative = 0.01 * Math.sign(secondDerivative);
     }
@@ -46,61 +45,79 @@ function estimateAbility(answers, correctAnswers, difficulties) {
     }
   }
 
-  // Constrain theta to reasonable bounds
   return Math.max(-4, Math.min(4, theta));
 }
 
-// Improved score conversion
+// Ability to score conversion
 function convertAbilityToScore(theta) {
-  // Normalize theta to 0-13.86 scale
   const minTheta = -3;
   const maxTheta = 3;
   const normalized = (theta - minTheta) / (maxTheta - minTheta);
   return Math.min(Math.max(normalized * 13.86, 0), 13.86);
 }
 
-// Answer command with better validation
+// /start
+bot.start(async (ctx) => {
+  const user = ctx.message.from;
+
+  try {
+    const userfind = await db.query("SELECT * FROM users WHERE telegram_id = $1", [user.id]);
+
+    if (userfind.rows.length > 0) {
+      ctx.reply(`Qayta xush kelibsiz, ${user.first_name}`);
+    } else {
+      ctx.reply(`Salom, ${user.first_name}, <b>MTest bot</b>ga xush kelibsiz!`, {
+        parse_mode: "HTML",
+      });
+
+      const fullname = user.first_name + (user.last_name ? " " + user.last_name : "");
+      await db.query(
+        "INSERT INTO users (telegram_id, username, full_name) VALUES ($1, $2, $3)",
+        [user.id, user.username, fullname]
+      );
+    }
+
+    const keyboard = Markup.keyboard([["Botdan foydalanish"]]).resize();
+    ctx.reply(
+      "Agar javobni jo'natishda qiyinchilikka duch kelsangiz, 'Botdan foydalanish' tugmasini bosing.",
+      keyboard
+    );
+  } catch (error) {
+    console.error("Start error:", error);
+    ctx.reply("❌ Xatolik yuz berdi. Keyinroq urining.");
+  }
+});
+
+// Javoblarni qabul qilish: /answer
 bot.command("answer", async (ctx) => {
   try {
     const message = ctx.message.text.trim();
-    const parts = message.split(/\s+/); // Split on any whitespace
+    const parts = message.split(/\s+/);
 
     if (parts.length < 2) {
-      return ctx.reply(
-        "❌ Javobni jo'natmadingiz! Format: /answer 1*1a2b3c..."
-      );
+      return ctx.reply("❌ Javobni jo'natmadingiz! Format: /answer 1*1a2b3c...");
     }
 
     const input = parts[1];
     const [mockPart, answersPart] = input.split("*");
 
     if (!mockPart || !answersPart) {
-      return ctx.reply(
-        "❌ Format noto'g'ri! To'g'ri format: /answer 1*1a2b3c..."
-      );
+      return ctx.reply("❌ Format noto'g'ri! To'g'ri format: /answer 1*1a2b3c...");
     }
 
-    // Validate mock ID
     const mockId = parseInt(mockPart);
     if (isNaN(mockId) || mockId <= 0) {
       return ctx.reply("❌ Mock ID musbat raqam bo'lishi kerak.");
     }
 
-    // Extract and validate answers
     const answerMatches = answersPart.match(/\d+[a-dA-D]/g) || [];
     if (answerMatches.length !== 10) {
-      return ctx.reply(
-        `❌ Javoblar aniq 10 ta bo'lishi kerak! Siz yuborgan: ${answerMatches.length} ta.`
-      );
+      return ctx.reply(`❌ Javoblar 10 ta bo'lishi kerak. Siz yuborgan: ${answerMatches.length}`);
     }
 
-    // Normalize answers to lowercase
     const userAnswers = answerMatches.map((a) => a.toLowerCase());
 
-    // Get mock data
-    const mockRes = await db.query("SELECT * FROM mock WHERE id = $1", [
-      mockId,
-    ]);
+    const mockRes = await db.query("SELECT * FROM mock WHERE id = $1", [mockId]);
     if (mockRes.rows.length === 0) {
       return ctx.reply("❌ Bunday mock test topilmadi.");
     }
@@ -114,20 +131,13 @@ bot.command("answer", async (ctx) => {
       return ctx.reply("❌ Mock test javoblari noto'g'ri formatda.");
     }
 
-    // Check time validity
     const now = moment().tz("Asia/Tashkent");
     const startsAt = moment.tz(mock.starts_at, "Asia/Tashkent");
     const endsAt = moment.tz(mock.ends_at, "Asia/Tashkent");
 
-    if (now.isBefore(startsAt)) {
-      return ctx.reply("⏳ Mock testi hali boshlanmagan!");
-    }
+    if (now.isBefore(startsAt)) return ctx.reply("⏳ Mock testi hali boshlanmagan!");
+    if (now.isAfter(endsAt)) return ctx.reply("❌ Ushbu mock test vaqti tugagan!");
 
-    if (now.isAfter(endsAt)) {
-      return ctx.reply("❌ Ushbu mock test vaqti allaqachon tugagan!");
-    }
-
-    // Check if user already submitted
     const userId = ctx.message.from.id;
     const resultCheck = await db.query(
       "SELECT * FROM results WHERE mock_number = $1",
@@ -135,47 +145,27 @@ bot.command("answer", async (ctx) => {
     );
 
     let userAlreadySubmitted = false;
-    let previousResult = null;
-
     if (resultCheck.rows.length > 0) {
       const results = resultCheck.rows[0].results || [];
-      previousResult = results.find((result) => result.userId == userId);
-      if (previousResult) {
-        userAlreadySubmitted = true;
-      }
+      const previousResult = results.find((r) => r.userId == userId);
+      if (previousResult) userAlreadySubmitted = true;
     }
 
     if (userAlreadySubmitted) {
-      return ctx.reply(
-        `❌ Siz avval javob bergansiz!`
-      );
+      return ctx.reply("❌ Siz avval javob bergansiz!");
     }
 
-    // Calculate score
     let score = 0;
-    for (let i = 0; i < 35; i++) {
-      if (userAnswers[i] === correctAnswers[i]) {
-        score++;
-      }
+    for (let i = 0; i < 10; i++) {
+      if (userAnswers[i] === correctAnswers[i]) score++;
     }
 
-    // Get difficulties or use defaults
-    const difficulties =
-      mock.difficulty ||
-      Array(35)
-        .fill(0)
-        .map((_, i) => {
-          // Default difficulty progression
-          return -2.5 + i * (5 / 34);
-        });
-
-    // Calculate ability using Rasch model
+    const difficulties = mock.difficulty || Array(10).fill(0).map((_, i) => -2.5 + i * (5 / 9));
     const ability = estimateAbility(userAnswers, correctAnswers, difficulties);
     const finalScore = convertAbilityToScore(ability);
 
-    // Prepare result object
     const newResult = {
-      userId: userId,
+      userId,
       username: ctx.message.from.username || "unknown",
       firstName: ctx.message.from.first_name || "",
       lastName: ctx.message.from.last_name || "",
@@ -185,89 +175,35 @@ bot.command("answer", async (ctx) => {
       submittedAt: new Date().toISOString(),
     };
 
-    // Save to database
-      if (resultCheck.rows.length > 0) {
+    if (resultCheck.rows.length > 0) {
       const existingResults = resultCheck.rows[0].results || [];
       await db.query("UPDATE results SET results = $1 WHERE mock_number = $2", [
         JSON.stringify([...existingResults, newResult]),
         mockId,
       ]);
     } else {
-      await db.query(
-        "INSERT INTO results (mock_number, results) VALUES ($1, $2)",
-        [mockId, JSON.stringify([newResult])]
-      );
+      await db.query("INSERT INTO results (mock_number, results) VALUES ($1, $2)", [
+        mockId,
+        JSON.stringify([newResult]),
+      ]);
     }
 
-    // Send response
-    ctx.reply(
-      `✅ Javob qabul qilindi!  `
-    );
-  } catch (error) {
-    console.error("Error processing answer:", error);
-    ctx.reply("❌ Xatolik yuz berdi. Iltimos, keyinroq urunib ko'ring.");
+    ctx.reply("✅ Javob qabul qilindi!");
+  } catch (err) {
+    console.error("Answer error:", err);
+    ctx.reply("❌ Xatolik yuz berdi. Keyinroq urining.");
   }
 });
 
-// Start command (unchanged)
-bot.start(async (ctx) => {
-  const user = ctx.message.from;
-
-  try {
-    const userfind = await db.query(
-      "SELECT * FROM users WHERE telegram_id = $1",
-      [user.id]
-    );
-
-    if (userfind.rows.length > 0) {
-      ctx.reply(`Qayta xush kelibsiz, ${user.first_name}`);
-    } else {
-      ctx.reply(
-        `Salom, ${user.first_name}, <b>MTest bot</b>ga xush kelibsiz!`,
-        {
-          parse_mode: "HTML",
-        }
-      );
-
-      const fullname =
-        user.first_name + (user.last_name ? " " + user.last_name : "");
-
-      await db.query(
-        "INSERT INTO users (telegram_id, username, full_name) VALUES ($1,$2,$3)",
-        [user.id, user.username, fullname]
-      );
-    }
-
-    const keyboard = Markup.keyboard([["Botdan foydalanish"]]).resize();
-    ctx.reply(
-      "Agar javobni jo'natishda qiyinchilikka duch kelsangiz, 'Botdan foydalanish' tugmasini bosing.",
-      keyboard
-    );
-  } catch (error) {
-    console.error("Error in start command:", error);
-    ctx.reply("❌ Xatolik yuz berdi. Iltimos, keyinroq urunib ko'ring.");
-  }
-});
-
-// Help text (unchanged)
+// Qo‘llanma
 bot.on("text", async (ctx) => {
-  const message = ctx.message.text;
-
-  if (message === "Botdan foydalanish") {
+  if (ctx.message.text === "Botdan foydalanish") {
     ctx.reply(
-      `<b>MTest</b> — Kanaldagi va tarixga asoslangan testlarni ishlash uchun mo'ljallangan bot.
+      `<b>MTest</b> — testlarni ishlash uchun mo'ljallangan bot.
 
 <b>Qo'llanma:</b>
-📤 Javoblarni ushbu botga quyidagi formatda yuboring:
-
+📤 Javoblarni quyidagi formatda yuboring:
 <b>/answer 1*1a2b3c...</b>
-
-<b>Izoh:</b>
-* Yulduzcha oldidagi raqam — mock test raqami
-* Keyingi qism — har bir savol raqami va tanlangan javob (masalan: 1a, 2c, 3b...)
-
-<b>⚠️ Diqqat!</b>
-* Oraliqda bo'sh joy, vergul yoki boshqa belgilar bo'lmasligi kerak
 
 <i><b>Omad!</b></i>`,
       { parse_mode: "HTML" }
