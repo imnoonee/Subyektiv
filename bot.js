@@ -57,7 +57,7 @@ function convertAbilityToScore(theta) {
   return Math.min(Math.max(normalized * 13.86, 0), 13.86);
 }
 
-async function bot(){
+async function RunBot(){
   
 // /start
 bot.start(async (ctx) => {
@@ -333,5 +333,5 @@ process.once("SIGTERM", () => bot.stop("SIGTERM"));
 
 app.listen(3000, ()=>{
   console.log("Bot is running!!!!");
-  bot();
+  RunBot();
 })
