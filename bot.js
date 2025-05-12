@@ -291,7 +291,7 @@ async function RunBot() {
           });
 
           try {
-            await bot.telegram.sendMessage(channelId, rankingMsg, { parse_mode: "Markdown" });
+            await bot.telegram.sendMessage(channelId, rankingMsg, { parse_mode: "HTML" });
             console.log(`Sent ranking to channel for Mock #${mock.id}`);
           } catch (err) {
             console.error(`Failed to send ranking to channel:`, err.message);
