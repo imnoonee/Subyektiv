@@ -7,49 +7,12 @@ const express = require("express");
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 const channelId = "@Subyektiv_1";
-
 // Express test route
 app.get("/test", (req, res) => {
   res.send("Server still active!");
 });
 
 
-async function checkSubscription(ctx) {
-  const userId = ctx.from.id;
-  try {
-    const member = await ctx.telegram.getChatMember(`${channelId}`, userId);
-    const isSubscribed = ['creator', 'administrator', 'member'].includes(member.status);
-    if (!isSubscribed) {
-      await ctx.reply(
-        `Botdan foydalanish uchun avval @${requiredChannel} kanaliga obuna bo‘ling.`,
-        Markup.inlineKeyboard([
-          [Markup.button.url('🔗 Obuna bo‘lish', `https://t.me/${requiredChannel}`)],
-          [Markup.button.callback('✅ Tekshirish', 'check_subscription')],
-        ])
-      );
-    }
-    return isSubscribed;
-  } catch (error) {
-    console.error('Obuna tekshiruvida xatolik:', error);
-    await ctx.reply('Xatolik yuz berdi. Keyinroq urinib ko‘ring.');
-    return false;
-  }
-}
-
-// ✅ Tekshirish tugmasi uchun handler
-bot.action('check_subscription', async (ctx) => {
-  const userId = ctx.from.id;
-  try {
-    const member = await ctx.telegram.getChatMember(`@${requiredChannel}`, userId);
-    if (['creator', 'administrator', 'member'].includes(member.status)) {
-      await ctx.reply('✅ Obuna tasdiqlandi! Endi botdan foydalanishingiz mumkin.');
-    } else {
-      await ctx.answerCbQuery('❌ Siz hali obuna bo‘lmagansiz.', { show_alert: true });
-    }
-  } catch (error) {
-    await ctx.answerCbQuery('Xatolik yuz berdi. Keyinroq urinib ko‘ring.', { show_alert: true });
-  }
-});
 
 // Rasch model ability estimation
 function estimateAbility(answers, correctAnswers, difficulties) {
@@ -97,8 +60,12 @@ function convertAbilityToScore(theta) {
 // /start
 bot.start(async (ctx) => {
   const user = ctx.message.from;
-
-  try {
+  const member =  await ctx.telegram.getChatMember(`${channelId}`, user.id);
+  const isSub = ['creator', 'administrator', 'member'].includes(member.status);
+  if(!isSub){
+    ctx.reply("Siz kanalga hali obuna bo'lmagansiz! Bodan foydalanish uchun ushbu kanalga obuna bo'ling va /start buyrug'ini qaytadan yuboring: @Subyektiv_1");
+  } else{
+     try {
     const userfind = await db.query("SELECT * FROM users WHERE telegram_id = $1", [user.id]);
 
     if (userfind.rows.length > 0) {
@@ -124,7 +91,9 @@ bot.start(async (ctx) => {
     console.error("Start error:", error);
     ctx.reply("❌ Xatolik yuz berdi. Keyinroq urining.");
   }
-});
+
+  }
+ });
 
 // Javoblarni qabul qilish: /answer
 bot.command("answer", async (ctx) => {
