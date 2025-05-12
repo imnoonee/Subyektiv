@@ -304,6 +304,8 @@ async function notifyMockEnd() {
   } catch (err) {
     console.error("❌ notifyMockEnd() ishlovida xatolik:", err);
   }
+
+  console.log("Checked!")
 }
 
 // Schedule the notification check every second
