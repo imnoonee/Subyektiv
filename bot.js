@@ -240,7 +240,7 @@ async function notifyMockEnd() {
       const diffInSeconds = endsAt.diff(now, "seconds");
 
       // Faqat tugashiga 1 soniya qolgan yoki tugayotgan testlar
-      if (diffInSeconds <= 1 && diffInSeconds >= 0 && !sentMessages[mock.id]) {
+      if (diffInSeconds <= 5 && diffInSeconds >= 0 && !sentMessages[mock.id]) {
         try {
           // 2. Resultlarni bazadan olish
           const resultData = await db.query(
@@ -304,8 +304,8 @@ async function notifyMockEnd() {
   } catch (err) {
     console.error("❌ notifyMockEnd() ishlovida xatolik:", err);
   }
-
   console.log("Checked!")
+
 }
 
 // Schedule the notification check every second
