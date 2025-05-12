@@ -230,88 +230,75 @@ bot.catch((err, ctx) => {
 async function notifyMockEnd() {
   try {
     const now = moment().tz("Asia/Tashkent");
+    console.log("Checking mocks at:", now.format());
 
-    // 1. End time mavjud barcha mock testlar
     const mocks = await db.query("SELECT * FROM mock WHERE ends_at IS NOT NULL");
-
-    // Xabar yuborilgan mocklarni kuzatib boramiz
-    const sentMessages = {};
+    if (mocks.rows.length === 0) {
+      console.log("No mocks found.");
+      return;
+    }
 
     for (const mock of mocks.rows) {
       const endsAt = moment.tz(mock.ends_at, "Asia/Tashkent");
       const diffInSeconds = endsAt.diff(now, "seconds");
 
-      // Faqat tugashiga 1 soniya qolgan yoki tugayotgan testlar
-      if (diffInSeconds <= 5 && diffInSeconds >= 0 && !sentMessages[mock.id]) {
-        try {
-          // 2. Resultlarni bazadan olish
-          const resultData = await db.query(
-            "SELECT * FROM results WHERE mock_number = $1",
-            [mock.id]
-          );
+      console.log(`Mock #${mock.id}: Ends at ${endsAt.format()}, Diff: ${diffInSeconds}s`);
 
-          if (resultData.rows.length === 0) continue;
+      if (diffInSeconds <= 60 && diffInSeconds >= 0) {
+        console.log(`Processing Mock #${mock.id}`);
 
-          const mockResult = resultData.rows[0];
-          const users = mockResult.results;
+        const resultData = await db.query(
+          "SELECT * FROM results WHERE mock_number = $1",
+          [mock.id]
+        );
 
-          if (!users || users.length === 0) continue;
+        if (resultData.rows.length === 0 || !resultData.rows[0].results) {
+          console.log(`No results for Mock #${mock.id}`);
+          continue;
+        }
 
-          // 3. Har bir foydalanuvchiga alohida yuborish
-          for (const user of users) {
-            const name =
-              user.username
-                ? `@${user.username}`
-                : user.firstName || user.lastName || "Hurmatli foydalanuvchi";
+        const users = resultData.rows[0].results;
 
-            const personalMsg =
-              `✅ ${name}, test yakunlandi!\n\n` +
-              `Sizning natijalaringiz:\n` +
-              `📊 To‘g‘ri javoblar soni: ${user.result}\n` +
-              `📈 Foiz: ${Math.floor((user.result * 100) / 10)}%\n` +
-              `Ball: ${user.finalScore?.toFixed(2) ?? "Nomaʼlum"}`;
+        // Foydalanuvchilarga shaxsiy xabar
+        for (const user of users) {
+          const name = user.username ? `@${user.username}` : user.firstName || "Foydalanuvchi";
+          const personalMsg = `✅ ${name}, test yakunlandi!\n\n` +
+                             `📊 To‘g‘ri javoblar: ${user.result}\n` +
+                             `📈 Foiz: ${Math.floor((user.result * 100) / 10)}%\n` +
+                             `Ball: ${user.finalScore?.toFixed(2) ?? "Noma'lum"}`;
 
-            try {
-              await bot.telegram.sendMessage(user.userId, personalMsg);
-            } catch (err) {
-              console.error(`❌ ${user.userId} ga xabar yuborishda xatolik:`, err.message);
-            }
+          try {
+            await bot.telegram.sendMessage(user.userId, personalMsg);
+            console.log(`Sent message to ${name}`);
+          } catch (err) {
+            console.error(`Failed to send message to ${user.userId}:`, err.message);
           }
+        }
 
-          // 4. Top 10 foydalanuvchini aniqlash va kanalga yuborish
-          const sortedUsers = [...users].sort((a, b) => b.result - a.result);
-          const topUsers = sortedUsers.length > 10 ? sortedUsers.slice(0, 10) : sortedUsers;
+        // Top-10 ni kanalga yuborish
+        const sortedUsers = [...users].sort((a, b) => b.result - a.result).slice(0, 10);
+        let rankingMsg = `📢 *Mock test #${mock.id} yakunlandi!*\n\n🏆 Top foydalanuvchilar:\n\n`;
+        sortedUsers.forEach((user, i) => {
+          const displayName = user.username ? `@${user.username}` : user.firstName || `Foydalanuvchi ${i + 1}`;
+          rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
+        });
 
-          let rankingMsg = `📢 *Mock test #${mock.id} yakunlandi!*\n\n`;
-          rankingMsg += `🏆 Yuqori natija ko‘rsatgan foydalanuvchilar:\n\n`;
-
-          topUsers.forEach((user, i) => {
-            const displayName =
-              user.username
-                ? `@${user.username}`
-                : user.firstName || user.lastName || `Foydalanuvchi ${i + 1}`;
-            rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
-          });
-
-          await bot.telegram.sendMessage(channelId, rankingMsg, {
-            parse_mode: "Markdown",
-          });
-
-          sentMessages[mock.id] = true;
-        } catch (error) {
-          console.error(`❌ Mock #${mock.id} uchun natijalarni qayta ishlashda xatolik:`, error);
+        try {
+          await bot.telegram.sendMessage(channelId, rankingMsg, { parse_mode: "Markdown" });
+          console.log(`Sent ranking to channel for Mock #${mock.id}`);
+        } catch (err) {
+          console.error(`Failed to send ranking to channel:`, err.message);
         }
       }
     }
   } catch (err) {
-    console.error("❌ notifyMockEnd() ishlovida xatolik:", err);
+    console.error("Error in notifyMockEnd:", err);
   }
-  console.log("Checked!")
-
 }
 
-// Schedule the notification check every second
-setInterval(notifyMockEnd, 2000);
+// Har 3 soniyada tekshirish
+setInterval(notifyMockEnd, 3000);
+
 
 // Start bot
 (async () => {
