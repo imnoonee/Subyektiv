@@ -12,7 +12,7 @@ app.get("/test", (req, res) => {
   res.send("Server still active!");
 });
 
-app.listen(3000, ()=>console.log("Bot is running!!!!"))
+
 
 // Rasch model ability estimation
 function estimateAbility(answers, correctAnswers, difficulties) {
@@ -57,6 +57,8 @@ function convertAbilityToScore(theta) {
   return Math.min(Math.max(normalized * 13.86, 0), 13.86);
 }
 
+async function bot(){
+  
 // /start
 bot.start(async (ctx) => {
   const user = ctx.message.from;
@@ -327,3 +329,9 @@ setInterval(notifyMockEnd, 2000);
 })();
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
+}
+
+app.listen(3000, ()=>{
+  console.log("Bot is running!!!!");
+  bot();
+})
