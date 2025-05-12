@@ -224,11 +224,6 @@ bot.catch((err, ctx) => {
   ctx.reply("❌ Botda xatolik yuz berdi. Iltimos, keyinroq urunib ko'ring.");
 });
 
-// Function to notify users when a mock test ends
-const moment = require("moment-timezone");
-const { db } = require("./db"); // <-- bu sizning db ulanish faylingiz (masalan, pg-promise, pg yoki knex)
-const channelId = "@your_channel_id"; // <-- bu yerga kanal id ni qo‘ying
-const bot = require("./bot"); // <-- Telegraf bot instance bo‘lsa
 
 async function notifyMockEnd() {
   try {
