@@ -225,71 +225,89 @@ bot.catch((err, ctx) => {
 });
 
 // Function to notify users when a mock test ends
+const moment = require("moment-timezone");
+const { db } = require("./db"); // <-- bu sizning db ulanish faylingiz (masalan, pg-promise, pg yoki knex)
+const channelId = "@your_channel_id"; // <-- bu yerga kanal id ni qo‘ying
+const bot = require("./bot"); // <-- Telegraf bot instance bo‘lsa
+
 async function notifyMockEnd() {
   try {
     const now = moment().tz("Asia/Tashkent");
+
+    // 1. End time mavjud barcha mock testlar
     const mocks = await db.query("SELECT * FROM mock WHERE ends_at IS NOT NULL");
 
-    // Object to track sent messages for each mock
+    // Xabar yuborilgan mocklarni kuzatib boramiz
     const sentMessages = {};
 
     for (const mock of mocks.rows) {
       const endsAt = moment.tz(mock.ends_at, "Asia/Tashkent");
       const diffInSeconds = endsAt.diff(now, "seconds");
 
-      // Check if the mock test is ending within the next 1 second and not already sent
+      // Faqat tugashiga 1 soniya qolgan yoki tugayotgan testlar
       if (diffInSeconds <= 1 && diffInSeconds >= 0 && !sentMessages[mock.id]) {
-        const result = await db.query(
-          "SELECT * FROM results WHERE mock_number = $1",
-          [mock.id]
-        );
-
-        // Check if results exist and contain the 'results' array
         try {
-          if (result.rows.length > 0 && result.rows[0].results) {
-            const users = result.rows[0].results;
-            users.forEach((user) => {
-              bot.telegram.sendMessage(user.userId, `Test yakunlandi! \nSizning natijalaringiz:\nNatija: ${Math.floor((user.result * 100) / 35)}%\nTo'g'ri javoblar soni: ${user.result}`);
-            });
+          // 2. Resultlarni bazadan olish
+          const resultData = await db.query(
+            "SELECT * FROM results WHERE mock_number = $1",
+            [mock.id]
+          );
 
-            // Sort users by result in descending order
-            const sortedUsers = [...users].sort((a, b) => b.result - a.result);
+          if (resultData.rows.length === 0) continue;
 
-            // Prepare ranking message
-            let rankingMessage = `🎉 Mock test #${mock.id} yakunlandi! Eng yaxshi natijalar:\n\n`;
-            const userCount = sortedUsers.length;
+          const mockResult = resultData.rows[0];
+          const users = mockResult.results;
 
-            if (userCount > 10) {
-              // Top 10 users
-              const top10 = sortedUsers.slice(0, 10);
-              top10.forEach((user, index) => {
-                const displayName = `@${user.username}` || user.firstName || user.lastName || `User #${index + 1}`;
-                rankingMessage += `${index + 1}. ${displayName}: ${Math.floor((user.result * 100) / 35)}% (${user.result}/35)\n`;
-              });
-              await bot.telegram.sendMessage(channelId, rankingMessage);
-            } else if (userCount > 0) {
-              // All users if less than or equal to 10
-              sortedUsers.forEach((user, index) => {
-                const displayName = `@${user.username}` || user.firstName || user.lastName || `User #${index + 1}`;
-                rankingMessage += `${index + 1}. ${displayName}: ${Math.floor((user.result * 100) / 35)}% (${user.result}/35)\n`;
-              });
-              await bot.telegram.sendMessage(channelId, rankingMessage);
-            } else {
-              console.log(`No users found for mock #${mock.id}`);
+          if (!users || users.length === 0) continue;
+
+          // 3. Har bir foydalanuvchiga alohida yuborish
+          for (const user of users) {
+            const name =
+              user.username
+                ? `@${user.username}`
+                : user.firstName || user.lastName || "Hurmatli foydalanuvchi";
+
+            const personalMsg =
+              `✅ ${name}, test yakunlandi!\n\n` +
+              `Sizning natijalaringiz:\n` +
+              `📊 To‘g‘ri javoblar soni: ${user.result}\n` +
+              `📈 Foiz: ${Math.floor((user.result * 100) / 10)}%\n` +
+              `Ball: ${user.finalScore?.toFixed(2) ?? "Nomaʼlum"}`;
+
+            try {
+              await bot.telegram.sendMessage(user.userId, personalMsg);
+            } catch (err) {
+              console.error(`❌ ${user.userId} ga xabar yuborishda xatolik:`, err.message);
             }
-
-            // Mark this mock as having sent the message
-            sentMessages[mock.id] = true;
-          } else {
-            console.log(`No results found for mock #${mock.id}`);
           }
+
+          // 4. Top 10 foydalanuvchini aniqlash va kanalga yuborish
+          const sortedUsers = [...users].sort((a, b) => b.result - a.result);
+          const topUsers = sortedUsers.length > 10 ? sortedUsers.slice(0, 10) : sortedUsers;
+
+          let rankingMsg = `📢 *Mock test #${mock.id} yakunlandi!*\n\n`;
+          rankingMsg += `🏆 Yuqori natija ko‘rsatgan foydalanuvchilar:\n\n`;
+
+          topUsers.forEach((user, i) => {
+            const displayName =
+              user.username
+                ? `@${user.username}`
+                : user.firstName || user.lastName || `Foydalanuvchi ${i + 1}`;
+            rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
+          });
+
+          await bot.telegram.sendMessage(channelId, rankingMsg, {
+            parse_mode: "Markdown",
+          });
+
+          sentMessages[mock.id] = true;
         } catch (error) {
-          console.log(error);
+          console.error(`❌ Mock #${mock.id} uchun natijalarni qayta ishlashda xatolik:`, error);
         }
       }
     }
-  } catch (error) {
-    console.error("Error in notifyMockEnd:", error);
+  } catch (err) {
+    console.error("❌ notifyMockEnd() ishlovida xatolik:", err);
   }
 }
 
