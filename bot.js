@@ -12,7 +12,7 @@ app.get("/test", (req, res) => {
   res.send("Server still active!");
 });
 
-
+app.listen(3000, ()=>console.log("Bot is running!!!!"))
 
 // Rasch model ability estimation
 function estimateAbility(answers, correctAnswers, difficulties) {
