@@ -284,7 +284,7 @@ async function RunBot() {
 
           // Send top-10 to channel
           const sortedUsers = [...users].sort((a, b) => b.result - a.result).slice(0, 10);
-          let rankingMsg = `📢 *Mock test #${mock.id} yakunlandi!*\n\n🏆 Top foydalanuvchilar:\n\n`;
+          let rankingMsg = `📢 <b>Test #${mock.id} yakunlandi!</b>\n\n🏆 Top foydalanuvchilar:\n\n`;
           sortedUsers.forEach((user, i) => {
             const displayName = user.username ? `@${user.username}` : user.firstName || `Foydalanuvchi ${i + 1}`;
             rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
