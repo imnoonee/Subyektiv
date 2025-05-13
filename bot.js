@@ -89,7 +89,7 @@ async function RunBot() {
         console.log(`New user added: ${user.id}`);
       }
 
-      const keyboard = Markup.keyboard([["Botdan foydalanish"]]).resize();
+      const keyboard = Markup.keyboard([["Botdan foydalanish"],["Profil"]]).resize();
       ctx.reply(
         "Agar javobni jo'natishda qiyinchilikka duch kelsangiz, 'Botdan foydalanish' tugmasini bosing.",
         keyboard
