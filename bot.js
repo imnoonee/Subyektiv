@@ -224,7 +224,8 @@ async function RunBot() {
         { parse_mode: "HTML" }
       );
     }else if(ctx.message.text === "Profil"){
-      ctx.reply("Profil tugmasi bosildi!");
+      const user = await db.query("SELECT * FROM users WHERE telegram_id = $1",[ctx.message.from.id]);
+      ctx.reply(user.xp);
     }
   });
 
