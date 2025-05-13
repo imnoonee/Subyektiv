@@ -238,7 +238,7 @@ bot.start(async (ctx) => {
       );
     }
 
-    const keyboard = Markup.keyboard([["Botdan foydalanish"]]).resize();
+    const keyboard = Markup.keyboard([["Botdan foydalanish"], ["Profil"]]).resize();
     ctx.reply(
       "Agar javobni jo'natishda qiyinchilikka duch kelsangiz, 'Botdan foydalanish' tugmasini bosing.",
       keyboard
