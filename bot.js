@@ -225,7 +225,8 @@ async function RunBot() {
       );
     }else if(ctx.message.text === "Profil"){
       const user = await db.query("SELECT * FROM users WHERE telegram_id = $1",[ctx.message.from.id]);
-      ctx.reply(user.xp);
+      const u = user.rows[0];
+      ctx.reply(u.xp);
     }
   });
 
