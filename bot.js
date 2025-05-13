@@ -223,6 +223,8 @@ async function RunBot() {
         `<i><b>Omad!</b></i>`,
         { parse_mode: "HTML" }
       );
+    }else if(ctx.message.text === "Profil"){
+      ctx.reply("Profil tugmasi bosildi!");
     }
   });
 
