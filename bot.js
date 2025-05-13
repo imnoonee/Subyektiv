@@ -226,7 +226,7 @@ async function RunBot() {
     }else if(ctx.message.text === "Profil"){
       const user = await db.query("SELECT * FROM users WHERE telegram_id = $1",[ctx.message.from.id]);
       const u = user.rows[0];
-      ctx.reply(u.xp);
+      ctx.reply(`Sizning profil:\n\n  ID: <b>${u.id}</b>\nIsm: ${u.full_name}\nXP: ${u.xp}`, {parse_mode:"HTML"});
     }
   });
 
