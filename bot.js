@@ -203,6 +203,9 @@ async function RunBot() {
           JSON.stringify([newResult]),
         ]);
       }
+      
+      const updateXP = db.query(`SELECT * FROM users WHERE telegram_id = $1`,[userId]);
+      const result = db.query(`UPDATE users SET xp = $1 WHERE telegram_id = 2$`, [updateXP.xp + score*10, userId]);
 
       console.log(`Answer submitted for Mock #${mockId} by user ${userId}: Score=${score}`);
       ctx.reply("✅ Javob qabul qilindi!");
@@ -274,6 +277,7 @@ async function RunBot() {
             const name = user.username ? `@${user.username}` : user.firstName || "Foydalanuvchi";
             const personalMsg =
               `✅ ${name}, test yakunlandi!\n\n` +
+              `+ ${user.result *10} XP\n`+
               `📊 To‘g‘ri javoblar: ${user.result}\n` +
               `📈 Foiz: ${Math.floor((user.result * 100) / 10)}%\n` +
               `Ball: ${user.finalScore?.toFixed(2) ?? "Noma'lum"}`;
