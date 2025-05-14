@@ -263,7 +263,7 @@ async function RunBot() {
 
         console.log(`Mock #${mock.id}: Ends at ${endsAt.format()}, Diff: ${diffInSeconds}s`);
 
-        if (diffInSeconds <= 60 && diffInSeconds >= 0) {
+        if (diffInSeconds <= 5 && diffInSeconds >= 0) {
           console.log(`Processing Mock #${mock.id}`);
 
           const resultData = await db.query(
