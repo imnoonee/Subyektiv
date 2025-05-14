@@ -251,7 +251,7 @@ async function RunBot() {
       const now = moment().tz("Asia/Tashkent");
       console.log(`Checking mocks at: ${now.format()}`);
 
-      const mocks = await db.query("SELECTDOFSELECT * FROM mock WHERE ends_at IS NOT NULL");
+      const mocks = await db.query("SELECT * FROM mock WHERE ends_at IS NOT NULL");
       if (mocks.rows.length === 0) {
         console.log("No mocks found.");
         return;
