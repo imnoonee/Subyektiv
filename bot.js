@@ -302,12 +302,12 @@ async function RunBot() {
           sortedUsers.forEach((user, i) => {
             const displayName = user.username
               ? `@${escapeTelegramText(user.username)}`
-              : escapeTelegramText(user.firstName) || `Foydalanuvchi ${i + 1}`;
+              : `Foydalanuvchi ${user.id + 1}`;
             rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
           });
 
           // Xabarni yuborishdan oldin log qilish
-          console.log("Ranking message to be sent:", rankingMsg);
+          console.log("Ranking message to be sent:", rankingMsg, {parse_mode: "HTML"});
 
           try {
             await bot.telegram.sendMessage(channelId, rankingMsg, { parse_mode: "HTML" });
