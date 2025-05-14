@@ -302,7 +302,7 @@ async function RunBot() {
           sortedUsers.forEach((user, i) => {
             const displayName = user.username
               ? `@${escapeTelegramText(user.username)}`
-              : `Foydalanuvchi ${user.id + 1}`;
+              : `Foydalanuvchi ${parseInt(user.id)}`;
             rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
           });
 
