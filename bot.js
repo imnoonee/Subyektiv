@@ -240,12 +240,18 @@ async function RunBot() {
   });
 
   // Notify mock end
+  // Telegram uchun xavfsiz matn yaratish funksiyasi
+  function escapeTelegramText(text) {
+    if (!text) return "";
+    return text.replace(/[_\*[\]()~`>#+-=|{}.!\/]/g, "\\$&");
+  }
+
   async function notifyMockEnd() {
     try {
       const now = moment().tz("Asia/Tashkent");
       console.log(`Checking mocks at: ${now.format()}`);
 
-      const mocks = await db.query("SELECT * FROM mock WHERE ends_at IS NOT NULL");
+      const mocks = await db.query("SELECTDOFSELECT * FROM mock WHERE ends_at IS NOT NULL");
       if (mocks.rows.length === 0) {
         console.log("No mocks found.");
         return;
@@ -274,10 +280,10 @@ async function RunBot() {
 
           // Send individual user results
           for (const user of users) {
-            const name = user.username ? `@${user.username}` : user.firstName || "Foydalanuvchi";
+            const name = user.username ? `@${escapeTelegramText(user.username)}` : escapeTelegramText(user.firstName) || "Foydalanuvchi";
             const personalMsg =
               `✅ ${name}, test yakunlandi!\n\n` +
-              `+ ${user.result *10} XP\n`+
+              `+ ${user.result * 10} XP\n` +
               `📊 To‘g‘ri javoblar: ${user.result}\n` +
               `📈 Foiz: ${Math.floor((user.result * 100) / 10)}%\n` +
               `Ball: ${user.finalScore?.toFixed(2) ?? "Noma'lum"}`;
@@ -294,9 +300,14 @@ async function RunBot() {
           const sortedUsers = [...users].sort((a, b) => b.result - a.result).slice(0, 10);
           let rankingMsg = `📢 <b>Test #${mock.id} yakunlandi!</b>\n\n🏆 Top foydalanuvchilar:\n\n`;
           sortedUsers.forEach((user, i) => {
-            const displayName = user.username ? `@${user.username}` : user.firstName || `Foydalanuvchi ${i + 1}`;
+            const displayName = user.username
+              ? `@${escapeTelegramText(user.username)}`
+              : escapeTelegramText(user.firstName) || `Foydalanuvchi ${i + 1}`;
             rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
           });
+
+          // Xabarni yuborishdan oldin log qilish
+          console.log("Ranking message to be sent:", rankingMsg);
 
           try {
             await bot.telegram.sendMessage(channelId, rankingMsg, { parse_mode: "HTML" });
@@ -310,6 +321,7 @@ async function RunBot() {
       console.error("Error in notifyMockEnd:", err);
     }
   }
+
 
   // Schedule notification check every 10 seconds
   setInterval(notifyMockEnd, 10000);
