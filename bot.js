@@ -83,15 +83,15 @@ async function RunBot() {
 
         const fullname = user.first_name + (user.last_name ? " " + user.last_name : "");
         await db.query(
-          "INSERT INTO users (telegram_id, username, full_name) VALUES ($1, $2, $3)",
-          [user.id, user.username || "", fullname]
+          "INSERT INTO users (telegram_id, username, full_name, chance, trueAnswered) VALUES ($1, $2, $3, $4, $5)",
+          [user.id, user.username || "", fullname, 3, false]
         );
         console.log(`New user added: ${user.id}`);
       }
 
-      const keyboard = Markup.keyboard([["Botdan foydalanish"],["Profil"]]).resize();
+      const keyboard = Markup.keyboard([["Botdan foydalanish"], ["Profil"], ["Savolga javob berish"]]).resize();
       ctx.reply(
-        "Agar javobni jo'natishda qiyinchilikka duch kelsangiz, 'Botdan foydalanish' tugmasini bosing.",
+        "Agar javobni jo'natishda qiyinchilikka duch kelsangiz, 'Botdan foydalanish' tugmasini bosing yoki viktorinada ishtirok etish uchun 'Savolga javob berish' tugmasini bosing.",
         keyboard
       );
     } catch (error) {
@@ -204,8 +204,8 @@ async function RunBot() {
         ]);
       }
       
-      const updateXP = db.query(`SELECT * FROM users WHERE telegram_id = $1`,[userId]);
-      const result = db.query(`UPDATE users SET xp = $1 WHERE telegram_id = 2$`, [updateXP.xp + score*10, userId]);
+      const updateXP = await db.query(`SELECT * FROM users WHERE telegram_id = $1`, [userId]);
+      await db.query(`UPDATE users SET xp = $1 WHERE telegram_id = $2`, [updateXP.rows[0].xp + score * 10, userId]);
 
       console.log(`Answer submitted for Mock #${mockId} by user ${userId}: Score=${score}`);
       ctx.reply("✅ Javob qabul qilindi!");
@@ -215,8 +215,9 @@ async function RunBot() {
     }
   });
 
-  // Qo‘llanma
+  // Qo‘llanma va Viktorina
   bot.on("text", async (ctx) => {
+    const userId = ctx.message.from.id;
     if (ctx.message.text === "Botdan foydalanish") {
       ctx.reply(
         `<b>MTest</b> — testlarni ishlash uchun mo'ljallangan bot.\n\n` +
@@ -226,10 +227,68 @@ async function RunBot() {
         `<i><b>Omad!</b></i>`,
         { parse_mode: "HTML" }
       );
-    }else if(ctx.message.text === "Profil"){
-      const user = await db.query("SELECT * FROM users WHERE telegram_id = $1",[ctx.message.from.id]);
+    } else if (ctx.message.text === "Profil") {
+      const user = await db.query("SELECT * FROM users WHERE telegram_id = $1", [userId]);
       const u = user.rows[0];
-      ctx.reply(`Sizning profil ma'lumotlaringiz:\n\nID: <b>${u.id}</b>\nIsm: ${u.full_name}\nXP: ${u.xp}`, {parse_mode:"HTML"});
+      ctx.reply(`Sizning profil ma'lumotlaringiz:\n\nID: <b>${u.id}</b>\nIsm: ${u.full_name}\nXP: ${u.xp}`, { parse_mode: "HTML" });
+    } else if (ctx.message.text === "Savolga javob berish") {
+      try {
+        const user = await db.query("SELECT * FROM users WHERE telegram_id = $1", [userId]);
+        if (user.rows.length === 0) {
+          return ctx.reply("❌ Foydalanuvchi topilmadi. Iltimos, /start buyrug‘ini yuboring.");
+        }
+
+        const u = user.rows[0];
+        if (u.trueAnswered) {
+          return ctx.reply("❌ Siz allaqachon savolga javob berib bo‘ldingiz!");
+        }
+
+        if (u.chance <= 0) {
+          return ctx.reply("❌ Sizda imkoniyat qolmagan!");
+        }
+
+        const question = "O‘zbekistonning poytaxti qaysi shahar?";
+        ctx.reply(`Savol: ${question}\nQolgan urinishlar: ${u.chance}\nJavobingizni matn sifatida yuboring.`);
+      } catch (err) {
+        console.error("Quiz start error:", err);
+        ctx.reply("❌ Xatolik yuz berdi. Keyinroq urining.");
+      }
+    } else {
+      // Handle quiz answer
+      try {
+        const user = await db.query("SELECT * FROM users WHERE telegram_id = $1", [userId]);
+        if (user.rows.length === 0) {
+          return;
+        }
+
+        const u = user.rows[0];
+        if (u.trueAnswered) {
+          return ctx.reply("❌ Siz allaqachon savolga javob berib bo‘ldingiz!");
+        }
+
+        if (u.chance <= 0) {
+          return ctx.reply("❌ Sizda imkoniyat qolmagan!");
+        }
+
+        const correctAnswer = "Tashkent";
+        const userAnswer = ctx.message.text.trim();
+
+        if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+          await db.query("UPDATE users SET trueAnswered = $1 WHERE telegram_id = $2", [true, userId]);
+          ctx.reply("✅ To‘g‘ri!");
+        } else {
+          const newChance = u.chance - 1;
+          await db.query("UPDATE users SET chance = $1 WHERE telegram_id = $2", [newChance, userId]);
+          if (newChance > 0) {
+            ctx.reply(`❌ Xato! Qolgan urinishlar: ${newChance}`);
+          } else {
+            ctx.reply("❌ Xato! Sizda imkoniyat qolmagan!");
+          }
+        }
+      } catch (err) {
+        console.error("Quiz answer error:", err);
+        ctx.reply("❌ Xatolik yuz berdi. Keyinroq urining.");
+      }
     }
   });
 
@@ -240,7 +299,6 @@ async function RunBot() {
   });
 
   // Notify mock end
-  // Telegram uchun xavfsiz matn yaratish funksiyasi
   function escapeTelegramText(text) {
     if (!text) return "";
     return text.replace(/[_\*[\]()~`>#+-=|{}.!\/]/g, "\\$&");
@@ -290,28 +348,28 @@ async function RunBot() {
 
             try {
               await bot.telegram.sendMessage(user.userId, personalMsg);
-              console.log(`Sent result to ${name} (ID: ${user.userId})`);
+              console.log(`Sent result to ${user.userId}: ${user}`);
             } catch (err) {
               console.error(`Failed to send result to ${user.userId}:`, err.message);
             }
           }
 
           // Send top-10 to channel
-          const sortedUsers = [...users].sort((a, b) => b.result - a.result).slice(0, 10);
-          let rankingMsg = `📢 <b>Test #${mock.id} yakunlandi!</b>\n\n🏆 Top foydalanuvchilar:\n\n`;
-          sortedUsers.forEach((user, i) => {
+          const sortedUsers = [...users].sort((a, b) => b.result - b.result).slice(0, 10);
+          let rankingMsg = `📢 <b>Test #${mock.id} yakunlandi!</b>\n\n🏆 <b>Top-10 foydalanuvchilar:</b>\n\n`;
+          rankingMsg += sortedUsers.forEach((user, i) => {
             const displayName = user.username
-              ? `@${escapeTelegramText(user.username)}`
+              ? `@${user.escape${TelegramText(user.username)}`
               : `Foydalanuvchi ${parseInt(user.id)}`;
-            rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta\n`;
+            rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta${n;
           });
 
-          // Xabarni yuborishdan oldin log qilish
-          console.log("Ranking message to be sent:", rankingMsg, {parse_mode: "HTML"});
+          // Log ranking message before sending
+          console.log("Ranking message to be sent:", rankingMsg, { parse_mode: "HTML" });
 
           try {
             await bot.telegram.sendMessage(channelId, rankingMsg, { parse_mode: "HTML" });
-            console.log(`Sent ranking to channel for Mock #${mock.id}`);
+            console.log(`Sent ranking to ${channelId} for Mock #${mock.id}`);
           } catch (err) {
             console.error(`Failed to send ranking to channel:`, err.message);
           }
@@ -321,7 +379,6 @@ async function RunBot() {
       console.error("Error in notifyMockEnd:", err);
     }
   }
-
 
   // Schedule notification check every 10 seconds
   setInterval(notifyMockEnd, 10000);
@@ -348,6 +405,6 @@ async function RunBot() {
 
 // Start Express server and bot
 app.listen(3000, () => {
-  console.log("Bot is running on port 3000!!!!");
+  console.log("Server is running on port 3000!!!!");
   RunBot();
 });
