@@ -348,28 +348,30 @@ async function RunBot() {
 
             try {
               await bot.telegram.sendMessage(user.userId, personalMsg);
-              console.log(`Sent result to ${user.userId}: ${user}`);
+              console.log(`Sent result to ${name} (ID: ${user.userId})`);
             } catch (err) {
               console.error(`Failed to send result to ${user.userId}:`, err.message);
             }
           }
 
           // Send top-10 to channel
-          const sortedUsers = [...users].sort((a, b) => b.result - b.result).slice(0, 10);
-          let rankingMsg = `📢 <b>Test #${mock.id} yakunlandi!</b>\n\n🏆 <b>Top-10 foydalanuvchilar:</b>\n\n`;
-          rankingMsg += sortedUsers.forEach((user, i) => {
-            const displayName = user.username
-              ? `@${user.escape${TelegramText(user.username)}`
-              : `Foydalanuvchi ${parseInt(user.id)}`;
-            rankingMsg += `${i + 1}. ${displayName} - ${user.result} ta${n;
-          });
+          const sortedUsers = [...users].sort((a, b) => b.result - a.result).slice(0, 10);
+          let rankingMsg = `📢 <b>Test #${mock.id} yakunlandi!</b>\n\n🏆 Top foydalanuvchilar:\n\n`;
+          rankingMsg += sortedUsers
+            .map((user, i) => {
+              const displayName = user.username
+                ? `@${escapeTelegramText(user.username)}`
+                : `Foydalanuvchi ${parseInt(user.userId)}`;
+              return `${i + 1}. ${displayName} - ${user.result} ta`;
+            })
+            .join("\n");
 
-          // Log ranking message before sending
+          // Xabarni yuborishdan oldin log qilish
           console.log("Ranking message to be sent:", rankingMsg, { parse_mode: "HTML" });
 
           try {
             await bot.telegram.sendMessage(channelId, rankingMsg, { parse_mode: "HTML" });
-            console.log(`Sent ranking to ${channelId} for Mock #${mock.id}`);
+            console.log(`Sent ranking to channel for Mock #${mock.id}`);
           } catch (err) {
             console.error(`Failed to send ranking to channel:`, err.message);
           }
