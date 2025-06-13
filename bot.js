@@ -274,7 +274,7 @@ async function RunBot() {
         const userAnswer = ctx.message.text.trim();
 
         if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
-          await db.query("UPDATE users SET trueAnswered = $1 WHERE telegram_id = $2", [true, userId]);
+          await db.query('UPDATE users SET "trueAnswered" = $1 WHERE telegram_id = $2', [true, userId]);
           ctx.reply("✅ To‘g‘ri!");
         } else {
           const newChance = u.chance - 1;
