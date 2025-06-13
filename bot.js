@@ -247,7 +247,7 @@ async function RunBot() {
           return ctx.reply("❌ Sizda imkoniyat qolmagan!");
         }
 
-        const question = "O‘zbekistonning poytaxti qaysi shahar?";
+        const question = "Ikkinchi jahon urushida Yaponiya imperiyasi ushbu kanalni o'z qo'lida ushlashga harakat qilgan. Chunki  Bu kanal qo'lga olinsa Yaponiya Tinch okeaniga mutlaq hukmron  bo'lishi mumkin edi. Savol ushbu kanalni toping?";
         ctx.reply(`Savol: ${question}\nQolgan urinishlar: ${u.chance}\nJavobingizni matn sifatida yuboring.`);
       } catch (err) {
         console.error("Quiz start error:", err);
@@ -270,7 +270,7 @@ async function RunBot() {
           return ctx.reply("❌ Sizda imkoniyat qolmagan!");
         }
 
-        const correctAnswer = "Tashkent";
+        const correctAnswer = "Panama";
         const userAnswer = ctx.message.text.trim();
 
         if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
