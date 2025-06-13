@@ -270,10 +270,10 @@ async function RunBot() {
           return ctx.reply("❌ Sizda imkoniyat qolmagan!");
         }
 
-        const correctAnswer = "Panama";
+        const correctAnswer = "Panama kanali";
         const userAnswer = ctx.message.text.trim();
 
-        if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+        if (userAnswer.includes(userAnswer.toLowerCase()) ) {
           await db.query('UPDATE users SET "trueAnswered" = $1 WHERE telegram_id = $2', [true, userId]);
           ctx.reply("✅ To‘g‘ri!");
         } else {
